@@ -123,6 +123,7 @@
 
         .envelope.flipped {
             transform: rotateY(180deg);
+            animation: none; /* Tắt animation wiggle khi đã lật */
         }
 
         .envelope-face {
@@ -145,6 +146,10 @@
             color: #ffd700;
             font-size: 1.5rem;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Chỉ mặt trước mới có animation glow */
+        .envelope:not(.flipped) .envelope-front {
             animation: glow 2s ease-in-out infinite;
         }
 
@@ -162,9 +167,15 @@
             padding: 15px;
         }
 
-        .envelope-back.winner {
+        /* Chỉ bao được CHỌN mới nháy (dù có phải winner hay không) */
+        .envelope-back.selected {
             background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
             animation: winnerPulse 1s ease-in-out infinite;
+        }
+
+        /* Bao winner không được chọn thì vẫn có màu vàng nhưng không nháy */
+        .envelope-back.winner:not(.selected) {
+            background: linear-gradient(135deg, #fff 0%, #ffe4b5 100%);
         }
 
         @keyframes winnerPulse {
@@ -317,6 +328,12 @@
         const CONFIG = {
             totalEnvelopes: 9,
             winnerAmount: '520.000đ',
+            // Kết quả khi trúng JACKPOT (sửa ở đây để đổi câu chúc winner)
+            winnerResult: {
+                emoji: '🎊',
+                text: '<strong>CHÚC MỪNG!</strong><br>🤘Bạn năm nay quá may mắn🥰'
+            },
+            // Các kết quả còn lại
             otherResults: [
                 { emoji: '💝', text: 'Chúc sức khỏe an khang, niềm vui trọn vẹn', amount: '131.000đ' },
                 { emoji: '🥳', text: 'Cung chúc tân niên, vạn sự bình yên', amount: '88.000đ' },
@@ -332,14 +349,38 @@
         // Trạng thái
         let soundEnabled = true;
         let hasDrawn = false;
+        let envelopeResults = []; // Lưu kết quả của từng bao
 
         // Khởi tạo
         function init() {
             createConfetti();
             setupFireworks();
+            initializeResults(); // Random kết quả trước
             createEnvelopes();
             checkPreviousResult();
             setupSoundToggle();
+        }
+
+        // Random kết quả cho tất cả các bao
+        function initializeResults() {
+            // Tạo mảng gồm 1 winner + 8 results khác
+            const allResults = [
+                { 
+                    emoji: CONFIG.winnerResult.emoji, 
+                    text: CONFIG.winnerResult.text, 
+                    amount: CONFIG.winnerAmount,
+                    isWinner: true
+                },
+                ...CONFIG.otherResults.map(r => ({...r, isWinner: false}))
+            ];
+
+            // Shuffle (xáo trộn) mảng results - thuật toán Fisher-Yates
+            for (let i = allResults.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allResults[i], allResults[j]] = [allResults[j], allResults[i]];
+            }
+
+            envelopeResults = allResults;
         }
 
         // Tạo confetti
@@ -392,11 +433,19 @@
             const clickedEnvelope = envelopes[index];
             const clickedBack = clickedEnvelope.querySelector('.envelope-back');
             
-            // Bao được chọn luôn là winner
-            clickedBack.classList.add('winner');
-            clickedBack.querySelector('.result-emoji').textContent = '🎊';
+            // Lấy kết quả của bao được chọn (RANDOM THẬT SỰ)
+            const result = envelopeResults[index];
+            
+            // Đánh dấu bao được chọn
+            clickedBack.classList.add('selected');
+            
+            // Hiển thị kết quả
+            if (result.isWinner) {
+                clickedBack.classList.add('winner');
+            }
+            clickedBack.querySelector('.result-emoji').textContent = result.emoji;
             clickedBack.querySelector('.result-text').innerHTML = 
-                `<strong>CHÚC MỪNG!</strong><br>🤘Bạn năm nay quá may mắn🥰<div class="result-amount">${CONFIG.winnerAmount} 💰</div>`;
+                `${result.text}<div class="result-amount">${result.amount} 💰</div>`;
             
             // Lật bao được chọn
             setTimeout(() => {
@@ -408,12 +457,14 @@
                 envelopes.forEach((envelope, i) => {
                     if (i !== index) {
                         const back = envelope.querySelector('.envelope-back');
-                        const resultIndex = i > index ? i - 1 : i;
-                        const result = CONFIG.otherResults[resultIndex % CONFIG.otherResults.length];
+                        const otherResult = envelopeResults[i];
                         
-                        back.querySelector('.result-emoji').textContent = result.emoji;
+                        if (otherResult.isWinner) {
+                            back.classList.add('winner');
+                        }
+                        back.querySelector('.result-emoji').textContent = otherResult.emoji;
                         back.querySelector('.result-text').innerHTML = 
-                            `${result.text}<div class="result-amount">${result.amount}</div>`;
+                            `${otherResult.text}<div class="result-amount">${otherResult.amount}</div>`;
                         
                         envelope.classList.add('flipped');
                     }
@@ -422,7 +473,9 @@
                 // Hiển thị thông báo
                 setTimeout(() => {
                     document.getElementById('resultMessage').classList.add('show');
-                    triggerMassiveFireworks();
+                    if (result.isWinner) {
+                        triggerMassiveFireworks(); // Chỉ nổ pháo hoa mạnh khi trúng
+                    }
                     playSound('win');
                 }, 500);
             }, 800);
@@ -430,9 +483,10 @@
             // Vô hiệu hóa tất cả click
             wrappers.forEach(w => w.classList.add('disabled'));
             
-            // === COMMENT 2 DÒNG DƯỚI ĐÂY ĐỂ TEST (cho phép reload lại) ===
+            // === COMMENT 3 DÒNG DƯỚI ĐÂY ĐỂ TEST (cho phép reload lại) ===
             // Sau khi test xong, BỎ COMMENT để bật lại tính năng chống reload
             localStorage.setItem('lixi_drawn', 'true');
+            localStorage.setItem('lixi_results', JSON.stringify(envelopeResults));
             localStorage.setItem('lixi_winner_index', index);
             // === KẾT THÚC PHẦN CẦN COMMENT ===
         }
@@ -447,6 +501,12 @@
             if (drawn === 'true') {
                 hasDrawn = true;
                 const winnerIndex = parseInt(localStorage.getItem('lixi_winner_index')) || 0;
+                const savedResults = localStorage.getItem('lixi_results');
+                
+                // Load kết quả đã lưu
+                if (savedResults) {
+                    envelopeResults = JSON.parse(savedResults);
+                }
                 
                 // Hiển thị lại kết quả
                 const envelopes = document.querySelectorAll('.envelope');
@@ -454,16 +514,17 @@
                 
                 envelopes.forEach((envelope, i) => {
                     const back = envelope.querySelector('.envelope-back');
+                    const result = envelopeResults[i];
                     
+                    // Đánh dấu bao được chọn
                     if (i === winnerIndex) {
+                        back.classList.add('selected');
+                    }
+                    
+                    if (result && result.isWinner) {
                         back.classList.add('winner');
-                        back.querySelector('.result-emoji').textContent = '🎊';
-                        back.querySelector('.result-text').innerHTML = 
-                            `<strong>CHÚC MỪNG!</strong><br>Bạn nhận được<div class="result-amount">${CONFIG.winnerAmount} 💰</div>`;
-                    } else {
-                        const resultIndex = i > winnerIndex ? i - 1 : i;
-                        const result = CONFIG.otherResults[resultIndex % CONFIG.otherResults.length];
-                        
+                    }
+                    if (result) {
                         back.querySelector('.result-emoji').textContent = result.emoji;
                         back.querySelector('.result-text').innerHTML = 
                             `${result.text}<div class="result-amount">${result.amount}</div>`;
@@ -609,6 +670,7 @@
                 if (confirm('🔄 Reset và chơi lại?\n(Chỉ dùng khi đang test)')) {
                     localStorage.removeItem('lixi_drawn');
                     localStorage.removeItem('lixi_winner_index');
+                    localStorage.removeItem('lixi_results');
                     location.reload();
                 }
             }
