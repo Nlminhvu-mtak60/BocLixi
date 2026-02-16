@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎉 Bốc Lì Xì Năm Mới 🎉</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #ff0000 0%, #ff6b00 50%, #ffd700 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Canvas cho pháo hoa */
+        #fireworksCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Confetti */
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #ffd700;
+            position: absolute;
+            animation: confettiFall linear infinite;
+            z-index: 2;
+        }
+
+        @keyframes confettiFall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+            }
+        }
+
+        /* Container chính */
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+
+        /* Tiêu đề */
+        .header {
+            margin: 30px 0;
+            animation: titleGlow 2s ease-in-out infinite;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8),
+                         0 0 40px rgba(255, 215, 0, 0.6);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #ffe4b5;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes titleGlow {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Grid bao lì xì */
+        .envelopes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        /* Bao lì xì */
+        .envelope-wrapper {
+            perspective: 1000px;
+            cursor: pointer;
+        }
+
+        .envelope-wrapper.disabled {
+            cursor: not-allowed;
+        }
+
+        .envelope {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 3/4;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+
+        .envelope-wrapper:not(.disabled):hover .envelope {
+            transform: scale(1.1) rotateY(10deg);
+            animation: wiggle 0.5s ease-in-out;
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: scale(1.1) rotateY(10deg); }
+            25% { transform: scale(1.1) rotateY(-5deg); }
+            75% { transform: scale(1.1) rotateY(5deg); }
+        }
+
+        .envelope.flipped {
+            transform: rotateY(180deg);
+            animation: none; /* Tắt animation wiggle khi đã lật */
+        }
+
+        .envelope-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Mặt trước */
+        .envelope-front {
+            background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);
+            border: 3px solid #ffd700;
+            color: #ffd700;
+            font-size: 1.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Chỉ mặt trước mới có animation glow */
+        .envelope:not(.flipped) .envelope-front {
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 215, 0, 0.5); }
+            50% { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 30px rgba(255, 215, 0, 0.8); }
+        }
+
+        /* Mặt sau */
+        .envelope-back {
+            background: linear-gradient(135deg, #fff 0%, #ffe4b5 100%);
+            border: 3px solid #ffd700;
+            transform: rotateY(180deg);
+            flex-direction: column;
+            padding: 15px;
+        }
+
+        /* Chỉ bao được CHỌN mới nháy (dù có phải winner hay không) */
+        .envelope-back.selected {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            animation: winnerPulse 1s ease-in-out infinite;
+        }
+
+        /* Bao winner không được chọn thì vẫn có màu vàng nhưng không nháy */
+        .envelope-back.winner:not(.selected) {
+            background: linear-gradient(135deg, #fff 0%, #ffe4b5 100%);
+        }
+
+        @keyframes winnerPulse {
+            0%, 100% { transform: rotateY(180deg) scale(1); }
+            50% { transform: rotateY(180deg) scale(1.05); }
+        }
+
+        .result-emoji {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .result-text {
+            font-size: 0.9rem;
+            color: #cc0000;
+            font-weight: bold;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .envelope-back.winner .result-text {
+            font-size: 1.1rem;
+            color: #ff0000;
+        }
+
+        .result-amount {
+            font-size: 1.5rem;
+            color: #ff0000;
+            margin-top: 5px;
+        }
+
+        /* Thông báo kết quả */
+        .result-message {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: none;
+        }
+
+        .result-message.show {
+            display: block;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-message h2 {
+            color: #ff0000;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .result-message p {
+            color: #333;
+            font-size: 1.2rem;
+        }
+
+        /* Nút âm thanh */
+        .sound-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s;
+        }
+
+        .sound-toggle:hover {
+            transform: scale(1.1);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2rem;
+            }
+
+            .subtitle {
+                font-size: 1rem;
+            }
+
+            .envelopes-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+
+            .result-message h2 {
+                font-size: 1.5rem;
+            }
+
+            .result-message p {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .title {
+                font-size: 1.5rem;
+            }
+
+            .subtitle {
+                font-size: 0.9rem;
+            }
+
+            .envelope-front {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="fireworksCanvas"></canvas>
+
+    <button class="sound-toggle" id="soundToggle" title="Bật/Tắt âm thanh">🔊</button>
+
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🎉 BỐC LÌ XÌ NĂM MỚI 🎉</h1>
+            <p class="subtitle">Chọn 1 bao lì xì – chỉ 1 lần duy nhất 🧧</p>
+        </div>
+
+        <div class="envelopes-grid" id="envelopesGrid"></div>
+
+        <div class="result-message" id="resultMessage">
+            <h2>🎊 CHÚC MỪNG NĂM MỚI 🎊</h2>
+            <p>Bạn đã bốc lì xì rồi – chúc mừng năm mới! 🎆</p>
+        </div>
+    </div>
+
+    <script>
+        // Cấu hình
+        const CONFIG = {
+            totalEnvelopes: 9,
+            winnerAmount: '520.000đ',
+            // Kết quả khi trúng JACKPOT (sửa ở đây để đổi câu chúc winner)
+            winnerResult: {
+                emoji: '🎊',
+                text: '<strong>CHÚC MỪNG!</strong><br>🤘Bạn năm nay quá may mắn🥰'
+            },
+            // Các kết quả còn lại
+            otherResults: [
+                { emoji: '💝', text: 'Chúc sức khỏe an khang, niềm vui trọn vẹn', amount: '131.000đ' },
+                { emoji: '🥳', text: 'Cung chúc tân niên, vạn sự bình yên', amount: '88.000đ' },
+                { emoji: '🍀', text: 'Hạnh phúc an nhàn, gia đình bình an', amount: '5.000đ' },
+                { emoji: '💼', text: 'Năm mới đa tài đa lộc đa phú quý', amount: '9.000đ' },
+                { emoji: '❤️', text: 'Chúc b lắm tiền lắm sức khỏe lắm thành công lắm may mắn.', amount: '168.000đ' },
+                { emoji: '🌟', text: 'Năm mới vạn sự như ý tỉ sự như mơ ', amount: '68.000đ' },
+                { emoji: '🎯', text: 'Công việc vừa ý, túi tiền nặng ký', amount: '10.000đ' },
+                { emoji: '⛵', text: 'Thuận buồm xuôi gió bình an vô sự', amount: '14.000đ' }
+            ]
+        };
+
+        // Trạng thái
+        let soundEnabled = true;
+        let hasDrawn = false;
+        let envelopeResults = []; // Lưu kết quả của từng bao
+
+        // Khởi tạo
+        function init() {
+            createConfetti();
+            setupFireworks();
+            initializeResults(); // Random kết quả trước
+            createEnvelopes();
+            checkPreviousResult();
+            setupSoundToggle();
+        }
+
+        // Random kết quả cho tất cả các bao
+        function initializeResults() {
+            // Tạo mảng gồm 1 winner + 8 results khác
+            const allResults = [
+                { 
+                    emoji: CONFIG.winnerResult.emoji, 
+                    text: CONFIG.winnerResult.text, 
+                    amount: CONFIG.winnerAmount,
+                    isWinner: true
+                },
+                ...CONFIG.otherResults.map(r => ({...r, isWinner: false}))
+            ];
+
+            // Shuffle (xáo trộn) mảng results - thuật toán Fisher-Yates
+            for (let i = allResults.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [allResults[i], allResults[j]] = [allResults[j], allResults[i]];
+            }
+
+            envelopeResults = allResults;
+        }
+
+        // Tạo confetti
+        function createConfetti() {
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                confetti.style.animationDelay = Math.random() * 2 + 's';
+                confetti.style.background = ['#ffd700', '#ff0000', '#ff6b00', '#fff'][Math.floor(Math.random() * 4)];
+                document.body.appendChild(confetti);
+            }
+        }
+
+        // Tạo bao lì xì
+        function createEnvelopes() {
+            const grid = document.getElementById('envelopesGrid');
+            
+            for (let i = 0; i < CONFIG.totalEnvelopes; i++) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'envelope-wrapper';
+                wrapper.innerHTML = `
+                    <div class="envelope" data-index="${i}">
+                        <div class="envelope-face envelope-front">
+                            🧧<br>LÌ XÌ
+                        </div>
+                        <div class="envelope-face envelope-back">
+                            <div class="result-emoji"></div>
+                            <div class="result-text"></div>
+                        </div>
+                    </div>
+                `;
+                
+                wrapper.addEventListener('click', () => handleEnvelopeClick(i));
+                grid.appendChild(wrapper);
+            }
+        }
+
+        // Xử lý click bao lì xì
+        function handleEnvelopeClick(index) {
+            if (hasDrawn) return;
+            
+            hasDrawn = true;
+            playSound('open');
+            
+            // Lật bao được chọn
+            const envelopes = document.querySelectorAll('.envelope');
+            const wrappers = document.querySelectorAll('.envelope-wrapper');
+            const clickedEnvelope = envelopes[index];
+            const clickedBack = clickedEnvelope.querySelector('.envelope-back');
+            
+            // Lấy kết quả của bao được chọn (RANDOM THẬT SỰ)
+            const result = envelopeResults[index];
+            
+            // Đánh dấu bao được chọn
+            clickedBack.classList.add('selected');
+            
+            // Hiển thị kết quả
+            if (result.isWinner) {
+                clickedBack.classList.add('winner');
+            }
+            clickedBack.querySelector('.result-emoji').textContent = result.emoji;
+            clickedBack.querySelector('.result-text').innerHTML = 
+                `${result.text}<div class="result-amount">${result.amount} 💰</div>`;
+            
+            // Lật bao được chọn
+            setTimeout(() => {
+                clickedEnvelope.classList.add('flipped');
+            }, 100);
+            
+            // Lật tất cả các bao còn lại sau 800ms
+            setTimeout(() => {
+                envelopes.forEach((envelope, i) => {
+                    if (i !== index) {
+                        const back = envelope.querySelector('.envelope-back');
+                        const otherResult = envelopeResults[i];
+                        
+                        if (otherResult.isWinner) {
+                            back.classList.add('winner');
+                        }
+                        back.querySelector('.result-emoji').textContent = otherResult.emoji;
+                        back.querySelector('.result-text').innerHTML = 
+                            `${otherResult.text}<div class="result-amount">${otherResult.amount}</div>`;
+                        
+                        envelope.classList.add('flipped');
+                    }
+                });
+                
+                // Hiển thị thông báo
+                setTimeout(() => {
+                    document.getElementById('resultMessage').classList.add('show');
+                    if (result.isWinner) {
+                        triggerMassiveFireworks(); // Chỉ nổ pháo hoa mạnh khi trúng
+                    }
+                    playSound('win');
+                }, 500);
+            }, 800);
+            
+            // Vô hiệu hóa tất cả click
+            wrappers.forEach(w => w.classList.add('disabled'));
+            
+            // === COMMENT 3 DÒNG DƯỚI ĐÂY ĐỂ TEST (cho phép reload lại) ===
+            // Sau khi test xong, BỎ COMMENT để bật lại tính năng chống reload
+            localStorage.setItem('lixi_drawn', 'true');
+            localStorage.setItem('lixi_results', JSON.stringify(envelopeResults));
+            localStorage.setItem('lixi_winner_index', index);
+            // === KẾT THÚC PHẦN CẦN COMMENT ===
+        }
+
+        // Kiểm tra kết quả trước đó
+        function checkPreviousResult() {
+            // === COMMENT DÒNG DƯỚI ĐÂY ĐỂ TEST (cho phép reload lại) ===
+            // Sau khi test xong, BỎ COMMENT để bật lại tính năng chống reload
+            const drawn = localStorage.getItem('lixi_drawn');
+            // === KẾT THÚC PHẦN CẦN COMMENT ===
+            
+            if (drawn === 'true') {
+                hasDrawn = true;
+                const winnerIndex = parseInt(localStorage.getItem('lixi_winner_index')) || 0;
+                const savedResults = localStorage.getItem('lixi_results');
+                
+                // Load kết quả đã lưu
+                if (savedResults) {
+                    envelopeResults = JSON.parse(savedResults);
+                }
+                
+                // Hiển thị lại kết quả
+                const envelopes = document.querySelectorAll('.envelope');
+                const wrappers = document.querySelectorAll('.envelope-wrapper');
+                
+                envelopes.forEach((envelope, i) => {
+                    const back = envelope.querySelector('.envelope-back');
+                    const result = envelopeResults[i];
+                    
+                    // Đánh dấu bao được chọn
+                    if (i === winnerIndex) {
+                        back.classList.add('selected');
+                    }
+                    
+                    if (result && result.isWinner) {
+                        back.classList.add('winner');
+                    }
+                    if (result) {
+                        back.querySelector('.result-emoji').textContent = result.emoji;
+                        back.querySelector('.result-text').innerHTML = 
+                            `${result.text}<div class="result-amount">${result.amount}</div>`;
+                    }
+                    
+                    envelope.classList.add('flipped');
+                });
+                
+                wrappers.forEach(w => w.classList.add('disabled'));
+                document.getElementById('resultMessage').classList.add('show');
+            }
+        }
+
+        // Pháo hoa
+        let fireworksCanvas, fireworksCtx;
+        let particles = [];
+
+        function setupFireworks() {
+            fireworksCanvas = document.getElementById('fireworksCanvas');
+            fireworksCtx = fireworksCanvas.getContext('2d');
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            animateFireworks();
+        }
+
+        function resizeCanvas() {
+            fireworksCanvas.width = window.innerWidth;
+            fireworksCanvas.height = window.innerHeight;
+        }
+
+        function createFirework(x, y, isWin = false) {
+            const particleCount = isWin ? 100 : 50;
+            const colors = ['#ffd700', '#ff0000', '#ff6b00', '#ffffff'];
+            
+            for (let i = 0; i < particleCount; i++) {
+                const angle = (Math.PI * 2 * i) / particleCount;
+                const velocity = isWin ? 5 + Math.random() * 3 : 3 + Math.random() * 2;
+                
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * velocity,
+                    vy: Math.sin(angle) * velocity,
+                    life: 100,
+                    color: colors[Math.floor(Math.random() * colors.length)]
+                });
+            }
+        }
+
+        function animateFireworks() {
+            fireworksCtx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            fireworksCtx.fillRect(0, 0, fireworksCanvas.width, fireworksCanvas.height);
+            
+            particles = particles.filter(p => p.life > 0);
+            
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.1; // Gravity
+                p.life -= 1;
+                
+                fireworksCtx.fillStyle = p.color;
+                fireworksCtx.globalAlpha = p.life / 100;
+                fireworksCtx.fillRect(p.x, p.y, 3, 3);
+            });
+            
+            fireworksCtx.globalAlpha = 1;
+            
+            // Random fireworks
+            if (Math.random() < 0.03) {
+                createFirework(
+                    Math.random() * fireworksCanvas.width,
+                    Math.random() * fireworksCanvas.height * 0.5
+                );
+            }
+            
+            requestAnimationFrame(animateFireworks);
+        }
+
+        function triggerMassiveFireworks() {
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    createFirework(
+                        Math.random() * fireworksCanvas.width,
+                        Math.random() * fireworksCanvas.height * 0.6,
+                        true
+                    );
+                }, i * 200);
+            }
+        }
+
+        // Âm thanh
+        function playSound(type) {
+            if (!soundEnabled) return;
+            
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            if (type === 'open') {
+                oscillator.frequency.value = 600;
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+            } else if (type === 'win') {
+                // Melody
+                const notes = [523, 659, 784, 1047];
+                notes.forEach((freq, i) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.2, audioContext.currentTime + i * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.1 + 0.3);
+                    
+                    osc.start(audioContext.currentTime + i * 0.1);
+                    osc.stop(audioContext.currentTime + i * 0.1 + 0.3);
+                });
+            }
+        }
+
+        function setupSoundToggle() {
+            const btn = document.getElementById('soundToggle');
+            btn.addEventListener('click', () => {
+                soundEnabled = !soundEnabled;
+                btn.textContent = soundEnabled ? '🔊' : '🔇';
+            });
+        }
+
+        // Phím tắt Reset (để test khi đang dev)
+        // Nhấn phím 'R' để reset và chơi lại
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                if (confirm('🔄 Reset và chơi lại?\n(Chỉ dùng khi đang test)')) {
+                    localStorage.removeItem('lixi_drawn');
+                    localStorage.removeItem('lixi_winner_index');
+                    localStorage.removeItem('lixi_results');
+                    location.reload();
+                }
+            }
+        });
+
+        // Khởi động
+        init();
+    </script>
+</body>
+</html>
